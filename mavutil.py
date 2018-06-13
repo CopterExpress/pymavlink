@@ -875,7 +875,7 @@ class mavserial(mavfile):
 
 class mavudp(mavfile):
     '''a UDP mavlink socket'''
-    def __init__(self, device, input=True, broadcast=False, source_system=255, source_component=0, use_native=default_native):
+    def __init__(self, device, input=True, broadcast=False, broadcast_discovery=True, source_system=255, source_component=0, use_native=default_native):
         a = device.split(':')
         if len(a) != 2:
             print("UDP ports must be specified as host:port")
@@ -883,6 +883,7 @@ class mavudp(mavfile):
         self.port = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.udp_server = input
         self.broadcast = False
+        self.broadcast_discovery = broadcast_discovery
         if input:
             self.port.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.port.bind((a[0], int(a[1])))
@@ -906,7 +907,7 @@ class mavudp(mavfile):
             if e.errno in [ errno.EAGAIN, errno.EWOULDBLOCK, errno.ECONNREFUSED ]:
                 return ""
             raise
-        if self.udp_server or self.broadcast:
+        if self.udp_server or (self.broadcast and self.broadcast_discovery):
             self.last_address = new_addr
         return data
 
@@ -1224,6 +1225,8 @@ def mavlink_connection(device, baud=115200, source_system=255, source_component=
         return mavudp(device[7:], input=False, source_system=source_system, source_component=source_component, use_native=use_native)
     if device.startswith('udpbcast:'):
         return mavudp(device[9:], input=False, source_system=source_system, source_component=source_component, use_native=use_native, broadcast=True)
+    if device.startswith('udpbb:'):
+	    return mavudp(device[6:], input=False, source_system=source_system, source_component=source_component, use_native=use_native, broadcast=True, broadcast_discovery=False)
     # For legacy purposes we accept the following syntax and let the caller to specify direction
     if device.startswith('udp:'):
         return mavudp(device[4:], input=input, source_system=source_system, source_component=source_component, use_native=use_native)
