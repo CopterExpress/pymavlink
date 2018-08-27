@@ -30,6 +30,10 @@ class MAVWPLoader(object):
         self.target_system = target_system
         self.target_component = target_component
         self.last_change = time.time()
+        self.colour_for_polygon = {
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION : (255,0,0),
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION : (0,255,0)
+        }
 
     def count(self):
         '''return number of waypoints'''
@@ -342,7 +346,11 @@ class MAVWPLoader(object):
             if not idx in done:
                 break
             idx += 1
-            
+
+        exclusion_start = -1
+        exclusion_count = -1
+        inclusion_start = -1
+        inclusion_count = -1
         while idx < self.count():
             w = self.wp(idx)
             if idx in done:
@@ -356,6 +364,23 @@ class MAVWPLoader(object):
                 if w.x != 0 or w.y != 0:
                     ret.append(idx)
                 continue
+            # display loops for exclusion and inclusion zones
+            if w.command == mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION:
+                if exclusion_start == -1:
+                    exclusion_count = int(w.param1)
+                    exclusion_start = idx
+                if idx == exclusion_start + exclusion_count - 1:
+                    ret.append(idx)
+                    ret.append(exclusion_start)
+                    return ret
+            if w.command == mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION:
+                if inclusion_start == -1:
+                    inclusion_count = int(w.param1)
+                    inclusion_start = idx
+                if idx == inclusion_start + inclusion_count - 1:
+                    ret.append(idx)
+                    ret.append(inclusion_start)
+                    return ret
             if (w.x != 0 or w.y != 0) and self.is_location_command(w.command):
                 ret.append(idx)
             idx += 1
@@ -367,7 +392,10 @@ class MAVWPLoader(object):
         points = []
         for idx in indexes:
             w = self.wp(idx)
-            points.append((w.x, w.y))
+            if w.command in self.colour_for_polygon:
+                points.append((w.x, w.y, self.colour_for_polygon[w.command]))
+            else:
+                points.append((w.x, w.y))
         return points
 
     def polygon_list(self):
