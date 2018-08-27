@@ -1225,7 +1225,7 @@ def mavlink_connection(device, baud=115200, source_system=255, source_component=
         return mavudp(device[7:], input=False, source_system=source_system, source_component=source_component, use_native=use_native)
     if device.startswith('udpbcast:'):
         return mavudp(device[9:], input=False, source_system=source_system, source_component=source_component, use_native=use_native, broadcast=True)
-    if device.startswith('udpbb:'):
+    if device.startswith('udppbcast:'):
 	    return mavudp(device[6:], input=False, source_system=source_system, source_component=source_component, use_native=use_native, broadcast=True, broadcast_discovery=False)
     # For legacy purposes we accept the following syntax and let the caller to specify direction
     if device.startswith('udp:'):
