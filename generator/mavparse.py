@@ -319,6 +319,8 @@ class MAVXML(object):
             m.fieldnames = []
             m.fieldlengths = []
             m.ordered_fieldnames = []
+            m.ordered_fieldtypes = []
+            m.fieldtypes = []
             m.message_flags = 0
             m.target_system_ofs = 0
             m.target_component_ofs = 0
@@ -341,6 +343,7 @@ class MAVXML(object):
                     m.fieldlengths.append(1)
                 else:
                     m.fieldlengths.append(L)
+                m.fieldtypes.append(f.type)
             for i in range(len(m.ordered_fields)):
                 f = m.ordered_fields[i]
                 f.wire_offset = m.wire_length
@@ -348,6 +351,7 @@ class MAVXML(object):
                 if m.extensions_start is None or i < m.extensions_start:
                     m.wire_min_length = m.wire_length
                 m.ordered_fieldnames.append(f.name)
+                m.ordered_fieldtypes.append(f.type)
                 f.set_test_value()
                 if f.name.find('[') != -1:
                     raise MAVParseError("invalid field name with array descriptor %s" % f.name)
@@ -440,6 +444,7 @@ def check_duplicates(xml):
     merge_enums(xml)
 
     msgmap = {}
+    msg_name_map = {}
     enummap = {}
     for x in xml:
         for m in x.message:
@@ -460,6 +465,15 @@ def check_duplicates(xml):
                     return True
                 fieldset.add(f.name)
             msgmap[key] = '%s (%s:%u)' % (m.name, x.filename, m.linenumber)
+            # Check for duplicate message names
+            if m.name in msg_name_map:
+                print("ERROR: Duplicate message name %s for id:%u (%s:%u) also used by %s" % (
+                    m.name,
+                    m.id,
+                    x.filename, m.linenumber,
+                    msg_name_map[m.name]))
+                return True
+            msg_name_map[m.name] = '%s (%s:%u)' % (m.id, x.filename, m.linenumber)
         for enum in x.enum:
             for entry in enum.entry:
                 if entry.autovalue is True and "common.xml" not in entry.origin_file:
